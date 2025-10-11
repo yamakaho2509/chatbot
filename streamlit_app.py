@@ -188,7 +188,7 @@ else:
             **達成基準**: (これまでの対話から抽出)
             
             **最終目標**: 
-            (これまでの対話内容をSMARTゴールに基づいて具体的な行動目標案を3つ出して、ユーザーに最も適したものを選択させてください)
+            (これまでの対話内容をSMARTゴールに基づいて具体的な行動目標案を3つ提示し、ユーザーに最適なものを選ばせる)
             
             ---
             
@@ -221,7 +221,8 @@ else:
                         st.markdown(gemini_response)
                     st.session_state.messages.append({"role": "assistant", "content": gemini_response})
 
-                    if "最終目標" in gemini_response:
+                    # ⭐ 修正: より具体的な文字列で判定するように変更
+                    if "## あなたの学習目標が固まりましたね！" in gemini_response:
                         st.session_state.finalized_goal = True
                         st.info("目標設定が完了しました。")
                     
