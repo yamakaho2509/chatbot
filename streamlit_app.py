@@ -50,11 +50,11 @@ SYSTEM_PROMPT = """
 # --- Helper Functions ---
 
 def get_gemini_response_with_retry(history: list, system_prompt: str):
-    """
-    Gemini APIを呼び出し、指数バックオフでリトライ処理を行うヘルパー関数。
-    成功したレスポンスのテキストを返す。失敗した場合はエラーメッセージを表示する。
-    """
-    google_api_key = st.secrets.get("GOOGLE_API_KEY")
+    """
+    Gemini APIを呼び出し、指数バックオフでリトライ処理を行うヘルパー関数。
+    成功したレスポンスのテキストを返す。失敗した場合はエラーメッセージを表示する。
+    """
+    google_api_key = st.secrets.get("GOOGLE_API_KEY")
 
     if not google_api_key:
         st.error("secrets.tomlファイルにGoogle APIキーが設定されていません。")
