@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 import json
 import time
-import os # osモジュールはファイルパスの確認に必要です
+import os 
 
 # --- Configuration & Constants ---
 
@@ -192,7 +192,7 @@ def handle_ongoing_chat():
                     st.session_state.finalized_goal = True
                     st.rerun() # 状態が変更されたら再実行してダウンロードボタンを表示
     else:
-        # --- ダウンロードボタンのロジック (ファイル名を修正) ---
+        # --- ダウンロードボタンのロジック (ファイル名「日記テンプレ：streamlit仕様.docx」を反映) ---
         st.info("目標設定は完了しました。お疲れ様でした！この目標に向かって、頑張ってくださいね！")
         
         # テンプレートファイルのパスを新しいファイル名に設定
@@ -215,7 +215,7 @@ def handle_ongoing_chat():
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             )
         else:
-            st.error(f"エラー: テンプレートファイル '{template_file_path}' が見つかりません。ファイル名を確認してください。")
+            st.error(f"エラー: テンプレートファイル '{template_file_path}' が見つかりません。ファイル名とtemplatesフォルダの場所を確認してください。")
 
 # --- Main App Execution ---
 
