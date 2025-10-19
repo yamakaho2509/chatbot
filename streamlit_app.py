@@ -153,12 +153,12 @@ def handle_initial_goal_setting():
                 f"③ 達成基準: {achievement_criteria}"
             )
 
-            # ユーザープロンプトを履歴に追加
-            st.session_state.messages.append({"role": "user", "content": user_prompt})
-            
             # フォームを非表示にする (st.empty()を使用)
             form_placeholder.empty()
 
+            # ユーザープロンプトを履歴に追加
+            st.session_state.messages.append({"role": "user", "content": user_prompt})
+            
             with st.chat_message("user"):
                 st.markdown(user_prompt)
 
@@ -170,7 +170,8 @@ def handle_initial_goal_setting():
             ]
             
             # ヘルパー関数でAPIを呼び出す
-            gemini_response = get_gemini_response_with_retry(history, SYSTEM_PROMPT)
+            with st.spinner("目標設定アシスタントが応答を生成中です..."): # ローディングスピナーを追加
+                gemini_response = get_gemini_response_with_retry(history, SYSTEM_PROMPT)
 
             if gemini_response:
                 # Geminiの応答を表示
@@ -180,9 +181,14 @@ def handle_initial_goal_setting():
                 # Geminiの応答を履歴に追加
                 st.session_state.messages.append({"role": "assistant", "content": gemini_response})
                 
-                # チャット開始フラグを立てて再実行
+                # API呼び出しと履歴への追加が成功した場合にのみチャット開始フラグを立てて再実行
                 st.session_state.chat_started = True
                 st.rerun()
+            else:
+                # API呼び出しが失敗した場合は、エラーメッセージを表示したままフォームを再表示（またはエラー状態を維持）
+                # ただし、form_placeholder.empty()でフォームは消えているため、エラーメッセージを明示的に残す
+                st.error("APIからの応答が得られませんでした。Google APIキーとネットワーク接続を確認してください。")
+
 
 def handle_ongoing_chat():
     """目標送信後の継続的なチャット対話を処理する"""
