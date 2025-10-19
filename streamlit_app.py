@@ -174,21 +174,17 @@ def handle_initial_goal_setting():
                 gemini_response = get_gemini_response_with_retry(history, SYSTEM_PROMPT)
 
             if gemini_response:
-                # Geminiの応答を表示
-                with st.chat_message("assistant"):
-                    st.markdown(gemini_response)
-
-                # Geminiの応答を履歴に追加
+                # 応答を履歴に追加するだけ (表示は次回のhandle_ongoing_chatに任せる)
                 st.session_state.messages.append({"role": "assistant", "content": gemini_response})
                 
                 # API呼び出しと履歴への追加が成功した場合にのみチャット開始フラグを立てて再実行
                 st.session_state.chat_started = True
-                st.rerun()
+                st.rerun() # これにより、handle_ongoing_chat()に遷移し、アシスタントの最初のメッセージが表示される
             else:
-                # API呼び出しが失敗した場合は、エラーメッセージを表示したままフォームを再表示（またはエラー状態を維持）
-                # ただし、form_placeholder.empty()でフォームは消えているため、エラーメッセージを明示的に残す
+                # API呼び出しが失敗した場合は、エラーメッセージを表示したまま
                 st.error("APIからの応答が得られませんでした。Google APIキーとネットワーク接続を確認してください。")
-
+                # 失敗した場合は、chat_startedをFalseのまま維持し、フォームの再表示を試みるためにrerunする
+                # ただし、form_placeholder.empty()でフォームが消えているため、手動で状態をリセットするか、エラーを表示し続ける
 
 def handle_ongoing_chat():
     """目標送信後の継続的なチャット対話を処理する"""
@@ -269,3 +265,4 @@ if not st.session_state.chat_started:
     handle_initial_goal_setting()
 else:
     handle_ongoing_chat()
+
