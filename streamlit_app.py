@@ -54,10 +54,13 @@ def get_gemini_response_with_retry(history: list, system_prompt: str):
     Gemini APIを呼び出し、指数バックオフでリトライ処理を行うヘルパー関数。
     成功したレスポンスのテキストを返す。失敗した場合はエラーメッセージを表示する。
     """
-    google_api_key = st.secrets.get("GOOGLE_API_KEY")
+    # ローカル実行環境に合わせたsecretsの取得
+    google_api_key = os.environ.get("GOOGLE_API_KEY") 
+    if not google_api_key:
+         google_api_key = st.secrets.get("GOOGLE_API_KEY")
 
     if not google_api_key:
-        st.error("secrets.tomlファイルにGoogle APIキーが設定されていません。")
+        st.error("Google APIキーが設定されていません。環境変数またはsecrets.tomlファイルを確認してください。")
         return None
 
     API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={google_api_key}"
@@ -192,11 +195,12 @@ def handle_ongoing_chat():
                     st.session_state.finalized_goal = True
                     st.rerun() # 状態が変更されたら再実行してダウンロードボタンを表示
     else:
-        # --- ダウンロードボタンのロジック (ファイル名「日記テンプレ：streamlit仕様.docx」を反映) ---
+        # --- ダウンロードボタンのロジック (ファイル名「nikki.docx」を反映) ---
         st.info("目標設定は完了しました。お疲れ様でした！この目標に向かって、頑張ってくださいね！")
         
         # テンプレートファイルのパスを新しいファイル名に設定
-        template_file_path = "templates/日記テンプレ：streamlit仕様.docx"
+        # 💡 ここを「nikki.docx」に変更
+        template_file_path = "templates/nikki.docx"
         
         if os.path.exists(template_file_path):
             # バイナリモードでファイルを読み込む (Wordファイルはバイナリです)
@@ -205,16 +209,19 @@ def handle_ongoing_chat():
             
             st.markdown("---")
             st.header("学習計画テンプレートのダウンロード")
-            st.write("このテンプレートを活用して、今後の学習をさらに具体的に計画してみましょう。")
+            # 💡 テキストでのインストラクション
+            st.write("目標設定が完了しました。このテンプレートを活用して、今後の学習をさらに具体的に計画してみましょう。")
 
             st.download_button(
-                label="📥 日記テンプレをダウンロード",
+                label="📥 計画テンプレートをダウンロード", # ラベルも変更
                 data=template_data,
                 # ダウンロード時のファイル名も新しい名前に設定
-                file_name="日記テンプレ：streamlit仕様.docx", 
+                # 💡 ここを「nikki.docx」に変更
+                file_name="nikki.docx", 
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             )
         else:
+            # 💡 エラーメッセージも新しいファイル名に合わせて修正
             st.error(f"エラー: テンプレートファイル '{template_file_path}' が見つかりません。ファイル名とtemplatesフォルダの場所を確認してください。")
 
 # --- Main App Execution ---
@@ -223,4 +230,3 @@ if not st.session_state.chat_started:
     handle_initial_goal_setting()
 else:
     handle_ongoing_chat()
-
