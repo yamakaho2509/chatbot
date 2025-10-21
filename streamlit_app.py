@@ -209,8 +209,14 @@ def handle_ongoing_chat():
             
             st.markdown("---")
             st.header("振り返り用テンプレートのダウンロード")
-            # 💡 テキストでのインストラクション
-            st.write("学習を行った日はこのテンプレートを活用して学習内容を振り返り、対話用のチャットボットにアップロードして振り返りを深めましょう！")
+            # 💡 テキストでのインストラクション（ここを修正）
+            st.markdown("""
+**ダウンロード後のインストラクション**
+1. 学習を行った日はこのテンプレートの設問に回答して、振り返りを行ってください
+2. 書き終えたら、ファイルを保存しましょう
+3. [対話用アプリ](https://learningmotivationchat.streamlit.app/)にアクセスし、ログイン(初回は新規登録)を行いましょう
+4. 保存した当日の振り返りのファイルを、ログインした先のチャット画面でアップロードして対話を始めましょう
+""")
 
             st.download_button(
                 label="📥 テンプレートをダウンロード", # ラベルも変更
@@ -230,3 +236,4 @@ if not st.session_state.chat_started:
     handle_initial_goal_setting()
 else:
     handle_ongoing_chat()
+
