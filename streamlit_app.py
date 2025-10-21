@@ -1,232 +1,381 @@
 import streamlit as st
-import requests
-import json
-import time
-import os 
+import sqlite3
+import hashlib
+import sys
+import io
+import docx
+import pandas as pd
 
-# --- Configuration & Constants ---
+# --- データベース設定 ---
 
-# システムプロンプトを定数として定義し、一元管理します。
-SYSTEM_PROMPT = """
-あなたは優秀なインストラクショナル・デザイナーであり、孤独の中独学をする成人学習者の自己成長を支援するコーチとしての役割を担う親しみやすいチャットボットです。
-学習支援に際して、まず学習目標を設定できるよう、対話を通して支援してください。
+def get_db_connection():
+    """データベース接続を取得する"""
+    conn = sqlite3.connect('chat_app.db')
+    conn.row_factory = sqlite3.Row
+    return conn
 
-目標設定のポイント：
-* 学習目標は、**行動目標**で示してください。
-* 学習目標は、**達成できたか評価できるように**してください。
-* 学習目標と合わせて、合格基準を設定してください。
+def init_db():
+    """データベースを初期化し、テーブルと管理者アカウントを作成する"""
+    conn = get_db_connection()
+    # ユーザーテーブルに is_admin 列を追加
+    try:
+        conn.execute('ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE')
+    except sqlite3.OperationalError:
+        # 列が既に存在する場合は何もしない
+        pass
 
-その他目標設定におけるインストラクション：
-* 上記の条件を満たす目標を設定するために、学習者に「どのようなテーマや目標に取り組みたいか」を積極的に尋ねて対話してください。
-* 学習者は、教材をすでに持っていて、いつまでに何を達成するかを定められている場合が多く想定されるので、あるものを活用した学習の伴奏を行う立ち位置から支援してください。
-* 学習者はすでに学習したい内容の教材やスケジュールは組んでいることを仮定します。スケジュール作成や学習内容の選定の支援は必要ありません。
-* 学習者が話しやすい雰囲気で質問し、学習テーマや目標の具体化を支援してください。
-* **返答には、必ず質問を1つだけ含めてください**。追加で質問したいことがある場合でも、1つの返答に複数の質問を入れないでください。
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            is_admin BOOLEAN DEFAULT FALSE
+        )
+    ''')
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS chat_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            role TEXT NOT NULL,
+            content TEXT NOT NULL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
 
-* **目標候補の提示フェーズのルール（重要）**:
-  * 必要な情報が集まったら、**最終目標のまとめ形式（---で始まるブロック）を絶対に使わず**、学習目標案の候補を3つ学習者に提案し、選択肢（1, 2, 3または「イメージと異なる」）から選ぶよう指示してください。**その際、各候補は「1. 」「2. 」「3. 」のように数字から始まるプレーンなテキストで記述し、見出し記法(#)は絶対に使用しないでください。**
-  * 「イメージと異なる」という返答があった場合は、追加で質問をして情報を集め、再度3案を提示してください。
-
-* **最終目標の確定フェーズのルール（重要）**:
-  * ユーザーが3つの案の中から1つを選んだ、または「これでいい」「OK」「目標確定」などのキーワードで目標に同意したと判断した場合に限り、対話を終了し、最終的な目標を明確に要約し、**必ず以下の形式**で提示してください。
-
----
-## あなたの学習目標が固まりましたね！👏
-
-**テーマ**: (これまでの対話から抽出)
-**目標期限**: (これまでの対話から抽出)
-**達成基準**: (これまでの対話から抽出)
-
-**最終目標**: 
-(これまでの対話内容をSMARTゴールに基づいて1つの具体的な行動目標としてまとめる)
-
----
-
-これで目標設定は完了です。この目標に向かって、頑張ってくださいね！応援しています！🎉
-
-上記の形式を提示した後は、対話を終了してください。
-"""
-
-# --- Helper Functions ---
-
-def get_gemini_response_with_retry(history: list, system_prompt: str):
-    """
-    Gemini APIを呼び出し、指数バックオフでリトライ処理を行うヘルパー関数。
-    成功したレスポンスのテキストを返す。失敗した場合はエラーメッセージを表示する。
-    """
-    # ローカル実行環境に合わせたsecretsの取得
-    google_api_key = os.environ.get("GOOGLE_API_KEY") 
-    if not google_api_key:
-         google_api_key = st.secrets.get("GOOGLE_API_KEY")
-
-    if not google_api_key:
-        st.error("Google APIキーが設定されていません。環境変数またはsecrets.tomlファイルを確認してください。")
-        return None
-
-    API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={google_api_key}"
+    # ★★★ ここで管理者アカウント情報を変更 ★★★
+    admin_username = 'adminkaho1020'
+    admin_password = 'adminkaho1020pw'
     
-    payload = {
-        "contents": history,
-        "systemInstruction": {
-            "parts": [{"text": system_prompt}]
-        }
-    }
+    # 管理者アカウントが存在しない場合のみ作成
+    admin_user = conn.execute('SELECT * FROM users WHERE username = ?', (admin_username,)).fetchone()
+    if not admin_user:
+        conn.execute(
+            'INSERT INTO users (username, password_hash, is_admin) VALUES (?, ?, ?)',
+            (admin_username, hash_password(admin_password), True)
+        )
+    conn.commit()
+    conn.close()
 
-    retries = 3
-    delay = 1
+def hash_password(password):
+    """パスワードをハッシュ化する"""
+    return hashlib.sha256(password.encode()).hexdigest()
 
-    for i in range(retries):
-        try:
-            # APIリクエストを送信
-            response = requests.post(API_URL, json=payload)
-            response.raise_for_status()
+def add_user(username, password):
+    """一般ユーザーをデータベースに追加する"""
+    conn = get_db_connection()
+    try:
+        # ★★★ 管理者名での一般登録を禁止 ★★★
+        if username.lower() == 'adminkaho1020':
+            return False
+        conn.execute(
+            'INSERT INTO users (username, password_hash) VALUES (?, ?)',
+            (username, hash_password(password))
+        )
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
 
-            # JSON応答を解析
-            response_json = response.json()
-            gemini_response = response_json.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', 'エラー: 応答がありませんでした。')
-            return gemini_response
-
-        except requests.exceptions.RequestException as e:
-            st.error(f"APIリクエスト中にエラーが発生しました: {e}")
-            if i < retries - 1:
-                st.info(f"リトライします... {delay}秒後")
-                time.sleep(delay)
-                delay *= 2
-            else:
-                st.error("リトライの最大回数に達しました。")
-        except (IndexError, KeyError) as e:
-            st.error(f"API応答の解析中にエラーが発生しました: {e}")
-            break
-            
+def verify_user(username, password):
+    """ユーザーを認証する"""
+    conn = get_db_connection()
+    user = conn.execute(
+        'SELECT * FROM users WHERE username = ?', (username,)
+    ).fetchone()
+    conn.close()
+    if user and user['password_hash'] == hash_password(password):
+        return user
     return None
 
-# --- Streamlit App Logic ---
+def get_all_users():
+    """管理者以外の全ユーザーを取得する"""
+    conn = get_db_connection()
+    users = conn.execute('SELECT id, username FROM users WHERE is_admin = FALSE ORDER BY username').fetchall()
+    conn.close()
+    return users
 
-# Create session state variables if they don't exist
-if "chat_started" not in st.session_state:
-    st.session_state.chat_started = False
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-if "finalized_goal" not in st.session_state:
-    st.session_state.finalized_goal = False
+def add_message_to_db(user_id, role, content):
+    """チャット履歴をデータベースに追加する"""
+    conn = get_db_connection()
+    conn.execute(
+        'INSERT INTO chat_history (user_id, role, content) VALUES (?, ?, ?)',
+        (user_id, role, content)
+    )
+    conn.commit()
+    conn.close()
 
-# Show title and description.
-st.title("💬 学習目標設定チャットボット")
-st.write(
-    "このチャットボットは、あなたの学習目標達成をサポートします。具体的な目標を明文化しましょう！"
-)
+def get_messages_from_db(user_id):
+    """特定のユーザーのチャット履歴を取得する"""
+    conn = get_db_connection()
+    messages_cursor = conn.execute(
+        'SELECT role, content FROM chat_history WHERE user_id = ? ORDER BY timestamp ASC',
+        (user_id,)
+    )
+    messages = [{"role": row["role"], "content": row["content"]} for row in messages_cursor]
+    conn.close()
+    return messages
 
-def handle_initial_goal_setting():
-    """初期の目標設定フォームを処理する"""
-    st.header("あなたの学習目標を設定しましょう")
-    learning_theme = st.text_input("① どんなテーマの学習に取り組んでいますか？ (例：簿記、英語、資格試験、業務スキルなど)", key="theme_input")
-    goal_date_and_progress = st.text_input("② いつまでにどのくらいの進捗を目指していますか？ (例：1か月後にテキスト1冊終える、来月の試験に合格する など)", key="date_input")
-    achievement_criteria = st.text_input("③ 「達成できた！」と感じるために、どんな行動や成果物があればよいですか？ (例：練習問題を9割正答、英単語を毎日30語覚える)", key="criteria_input")
+# --- 管理者パネル ---
+def admin_panel():
+    st.sidebar.title("管理者パネル")
+    st.sidebar.write("---")
+    
+    # なりすまし中の場合、管理者ビューに戻るボタンを表示
+    if st.session_state.get('impersonating', False):
+        if st.sidebar.button("管理者ビューに戻る"):
+            # 管理者自身のセッション情報に戻す
+            st.session_state['user_id'] = st.session_state['admin_id']
+            st.session_state['username'] = st.session_state['admin_username']
+            st.session_state['is_admin'] = True
+            st.session_state['impersonating'] = False
+            # 閲覧中のチャット履歴をクリア
+            if 'viewing_messages' in st.session_state:
+                del st.session_state['viewing_messages']
+            st.rerun()
+        st.sidebar.write("---")
 
-    if st.button("目標を送信", key="submit_button"):
-        # ユーザー入力を統合したプロンプトを作成
-        user_prompt = (
-            f"私の学習目標です。この情報に基づいて、考えを深めるための質問を1つだけ返してください。\n\n"
-            f"① テーマ: {learning_theme}\n"
-            f"② 進捗: {goal_date_and_progress}\n"
-            f"③ 達成基準: {achievement_criteria}"
-        )
+    st.sidebar.subheader("ユーザー一覧")
+    users = get_all_users()
+    if not users:
+        st.sidebar.info("まだ一般ユーザーは登録されていません。")
+        return
 
-        # ユーザープロンプトを履歴に追加
-        st.session_state.messages.append({"role": "user", "content": user_prompt})
-        with st.chat_message("user"):
-            st.markdown(user_prompt)
+    for user in users:
+        with st.sidebar.expander(f"ユーザー: {user['username']}"):
+            # 1. 履歴閲覧機能
+            if st.button("履歴を閲覧", key=f"view_{user['id']}"):
+                messages = get_messages_from_db(user['id'])
+                st.session_state['viewing_messages'] = messages
+                st.session_state['viewing_username'] = user['username']
+                # なりすまし状態は解除
+                if 'impersonating' in st.session_state:
+                    st.session_state['impersonating'] = False
 
-        # API呼び出し用に履歴を整形
-        history = [
-            {"role": "user" if msg["role"] == "user" else "model", "parts": [{"text": msg["content"]}]} 
-            for msg in st.session_state.messages
-        ]
-        
-        # ヘルパー関数でAPIを呼び出す
-        gemini_response = get_gemini_response_with_retry(history, SYSTEM_PROMPT)
+            # 2. なりすましログイン機能
+            if st.button("このユーザーとしてログイン", key=f"login_as_{user['id']}"):
+                st.session_state['impersonating'] = True
+                # 現在の管理者情報を保存
+                st.session_state['admin_id'] = st.session_state['user_id']
+                st.session_state['admin_username'] = st.session_state['username']
+                # なりすまし対象のユーザー情報に切り替え
+                st.session_state['user_id'] = user['id']
+                st.session_state['username'] = user['username']
+                st.session_state['is_admin'] = False # 一時的に管理者権限をオフ
+                # セッションのメッセージ履歴を対象ユーザーのものに切り替え
+                st.session_state.messages = get_messages_from_db(user['id'])
+                # 閲覧モードは解除
+                if 'viewing_messages' in st.session_state:
+                    del st.session_state['viewing_messages']
+                st.rerun()
 
-        if gemini_response:
-            # Geminiの応答を表示
-            with st.chat_message("assistant"):
-                st.markdown(gemini_response)
 
-            # Geminiの応答を履歴に追加
-            st.session_state.messages.append({"role": "assistant", "content": gemini_response})
-            
-            # チャット開始フラグを立てて再実行
-            st.session_state.chat_started = True
+# --- メインアプリケーション ---
+def main():
+    init_db()
+
+    # セッション状態の初期化
+    if 'logged_in' not in st.session_state:
+        st.session_state.logged_in = False
+        st.session_state.username = ""
+        st.session_state.user_id = None
+        st.session_state.is_admin = False
+
+    # --- ログイン/新規登録UI (サイドバー) ---
+    if not st.session_state.logged_in:
+        st.sidebar.title("ユーザー認証")
+        choice = st.sidebar.selectbox("メニュー", ["ログイン", "新規登録"])
+
+        if choice == "ログイン":
+            with st.sidebar.form("login_form"):
+                username = st.text_input("ユーザー名")
+                password = st.text_input("パスワード", type="password")
+                submitted = st.form_submit_button("ログイン")
+                if submitted:
+                    user = verify_user(username, password)
+                    if user:
+                        st.session_state.logged_in = True
+                        st.session_state.username = user['username']
+                        st.session_state.user_id = user['id']
+                        st.session_state.is_admin = user['is_admin']
+                        st.rerun()
+                    else:
+                        st.sidebar.error("ユーザー名またはパスワードが間違っています。")
+
+        elif choice == "新規登録":
+            with st.sidebar.form("signup_form"):
+                new_username = st.text_input("ユーザー名")
+                # ★★★ 管理者名での一般登録を禁止 ★★★
+                if new_username.lower() == 'adminkaho1020':
+                    st.warning("このユーザー名は使用できません。")
+                new_password = st.text_input("パスワード", type="password")
+                submitted = st.form_submit_button("登録")
+                if submitted and new_username.lower() != 'adminkaho1020':
+                    if add_user(new_username, new_password):
+                        st.sidebar.success("登録が完了しました。ログインしてください。")
+                    else:
+                        st.sidebar.error("このユーザー名は既に使用されています。")
+    else: # ログイン後の処理
+        st.sidebar.success(f"{st.session_state.username} としてログイン中")
+        if st.sidebar.button("ログアウト"):
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
             st.rerun()
 
-def handle_ongoing_chat():
-    """目標送信後の継続的なチャット対話を処理する"""
-    # 既存のメッセージを表示
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+    # --- ログインしている場合のみアプリ本体を表示 ---
+    if st.session_state.logged_in:
+        # 管理者の場合、管理者パネルを表示
+        if st.session_state.is_admin and not st.session_state.get('impersonating', False):
+            admin_panel()
+            st.title("管理者ダッシュボード")
+            st.info("サイドバーからユーザーを選択し、操作を行ってください。")
 
-    # 最終目標が確定していない場合のみチャット入力ボックスを表示
-    if not st.session_state.finalized_goal:
-        if prompt := st.chat_input("何が知りたいですか？"):
-            # ユーザーの新しいプロンプトを履歴に追加して表示
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            with st.chat_message("user"):
-                st.markdown(prompt)
-
-            # API呼び出し用に履歴を整形
-            history = [
-                {"role": "user" if msg["role"] == "user" else "model", "parts": [{"text": msg["content"]}]} 
-                for msg in st.session_state.messages
-            ]
-
-            # ヘルパー関数でAPIを呼び出す
-            gemini_response = get_gemini_response_with_retry(history, SYSTEM_PROMPT)
-
-            if gemini_response:
-                # Geminiの応答を表示
-                with st.chat_message("assistant"):
-                    st.markdown(gemini_response)
-                
-                # Geminiの応答を履歴に追加
-                st.session_state.messages.append({"role": "assistant", "content": gemini_response})
-
-                # 最終目標の形式が出力されたかチェックし、チャットを終了
-                if "## あなたの学習目標が固まりましたね！" in gemini_response:
-                    st.session_state.finalized_goal = True
-                    st.rerun() # 状態が変更されたら再実行してダウンロードボタンを表示
-    else:
-        # --- ダウンロードボタンのロジック (ファイル名「nikki.docx」を反映) ---
-        st.info("目標設定は完了しました。お疲れ様でした！この目標に向かって、頑張ってくださいね！")
+            # 履歴閲覧モードの場合、チャット履歴を表示
+            if 'viewing_messages' in st.session_state:
+                st.header(f"ユーザー「{st.session_state['viewing_username']}」の学習履歴")
+                messages_to_display = st.session_state['viewing_messages']
+                if not messages_to_display:
+                    st.write("このユーザーのチャット履歴はまだありません。")
+                else:
+                    for message in messages_to_display:
+                        with st.chat_message(message["role"]):
+                            st.markdown(message["content"])
         
-        # テンプレートファイルのパスを新しいファイル名に設定
-        # 💡 ここを「nikki.docx」に変更
-        template_file_path = "templates/nikki.docx"
-        
-        if os.path.exists(template_file_path):
-            # バイナリモードでファイルを読み込む (Wordファイルはバイナリです)
-            with open(template_file_path, "rb") as f:
-                template_data = f.read()
+        # 一般ユーザーまたはなりすまし中の管理者の場合、チャットUIを表示
+        else:
+            # なりすまし中の管理者向けの表示
+            if st.session_state.get('impersonating', False):
+                st.info(f"現在、管理者として「{st.session_state.username}」でログインしています。")
+                if st.sidebar.button("管理者ビューに戻る"):
+                    st.session_state.user_id = st.session_state.admin_id
+                    st.session_state.username = st.session_state.admin_username
+                    st.session_state.is_admin = True
+                    st.session_state.impersonating = False
+                    if 'viewing_messages' in st.session_state:
+                        del st.session_state['viewing_messages']
+                    st.rerun()
             
-            st.markdown("---")
-            st.header("学習計画テンプレートのダウンロード")
-            # 💡 テキストでのインストラクション
-            st.write("目標設定が完了しました。このテンプレートを活用して、今後の学習をさらに具体的に計画してみましょう。")
+            # --- ここから元のチャットアプリのロジック ---
+            st.title("💬 チャットボットと学びを振り返ろう！")
+            st.write("記入済みの学習日記フォーマットをDOCS形式でアップロードすると、その内容に関する対話ができます！")
 
-            st.download_button(
-                label="📥 計画テンプレートをダウンロード", # ラベルも変更
-                data=template_data,
-                # ダウンロード時のファイル名も新しい名前に設定
-                # 💡 ここを「nikki.docx」に変更
-                file_name="nikki.docx", 
+            try:
+                gemini_api_key = st.secrets["google_api_key"]
+                genai.configure(api_key=gemini_api_key)
+                model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')
+            except Exception as e:
+                st.error(f"APIキーの設定でエラーが発生しました: {e}")
+                st.stop()
+            
+            uploaded_file = st.file_uploader("ドキュメントをアップロードしてください", type=['txt', 'docx'])
+
+            if "messages" not in st.session_state:
+                st.session_state.messages = get_messages_from_db(st.session_state.user_id)
+            if "document_content" not in st.session_state:
+                st.session_state.document_content = None
+
+            if uploaded_file is not None and st.session_state.document_content is None:
+                # （ファイルアップロード処理は元のコードと同じため省略）
+                 try:
+                    if uploaded_file.type == 'text/plain':
+                        document_content = uploaded_file.getvalue().decode('utf-8')
+                    elif uploaded_file.type == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+                        document = docx.Document(uploaded_file)
+                        paragraphs = [p.text for p in document.paragraphs]
+                        document_content = "\n".join(paragraphs)
+                    
+                    st.session_state.document_content = document_content
+                    st.success("ドキュメントが正常にアップロードされました。")
+                    st.info("これで、ドキュメントの内容について質問できます。")
+                    
+                    initial_prompt = f"これからあなたの学習をサポートします。今日の学習日記を拝見しました。\n\nドキュメント:\n{document_content}\n\nまずは、この日の学習で一番印象に残っていることについて教えていただけますか？"
+                    
+                    with st.spinner("思考中です..."):
+                        response = model.generate_content(initial_prompt)
+                    
+                    assistant_message = response.text
+                    st.session_state.messages.append({"role": "assistant", "content": assistant_message})
+                    add_message_to_db(st.session_state['user_id'], "assistant", assistant_message)
+                    st.rerun()
+                 except Exception as e:
+                    st.error(f"ファイルの読み込み中にエラーが発生しました: {e}")
+
+
+            for message in st.session_state.messages:
+                with st.chat_message(message["role"]):
+                    st.markdown(message["content"])
+
+            if prompt := st.chat_input("ドキュメントについて質問してください"):
+                st.session_state.messages.append({"role": "user", "content": prompt})
+                add_message_to_db(st.session_state.user_id, "user", prompt)
+                with st.chat_message("user"):
+                    st.markdown(prompt)
+
+                try:
+                    history = []
+                    document_context = f"""
+# ここにチャットボットの役割を定義するテキストを貼り付けてください。
+（...元のプロンプトと同じ内容なので省略...）
+\nドキュメント:\n{st.session_state.get('document_content', 'ドキュメントはまだアップロードされていません。')}"""
+
+                    history.append({'role': 'user', 'parts': [document_context]})
+                    
+                    for msg in st.session_state.messages:
+                        role = "user" if msg["role"] == "user" else "model"
+                        history.append({'role': role, 'parts': [msg["content"]]})
+                    
+                    response_stream = model.generate_content(history, stream=True)
+
+                    full_response = ""
+                    with st.chat_message("assistant"):
+                        message_placeholder = st.empty()
+                        for chunk in response_stream:
+                            if chunk.parts:
+                                text_part = chunk.parts[0].text
+                                full_response += text_part
+                                message_placeholder.markdown(full_response + "▌")
+                        message_placeholder.markdown(full_response)
+                    
+                    st.session_state.messages.append({"role": "assistant", "content": full_response})
+                    add_message_to_db(st.session_state.user_id, "assistant", full_response)
+
+                except Exception as e:
+                    st.error("エラーが発生しました。詳細はコンソールを確認してください。")
+                    print(f"エラーの詳細: {e}", file=sys.stderr)
+                    error_message = "申し訳ありません、応答の生成中にエラーが発生しました。"
+                    st.session_state.messages.append({"role": "assistant", "content": error_message})
+                    add_message_to_db(st.session_state.user_id, "assistant", error_message)
+            
+            # エクスポート機能
+            st.sidebar.header("エクスポート")
+            # （エクスポート機能は元のコードと同じため省略）
+            doc = docx.Document()
+            doc.add_heading(f'{st.session_state["username"]}さんの振り返り', 0)
+            for message in st.session_state.messages:
+                role_jp = "ユーザー" if message["role"] == "user" else "チャットボット"
+                doc.add_paragraph(f"{role_jp}: {message['content']}")
+            doc_io = io.BytesIO()
+            doc.save(doc_io)
+            doc_io.seek(0)
+            st.sidebar.download_button(
+                label="振り返りをWord形式でダウンロード",
+                data=doc_io,
+                file_name=f"{st.session_state['username']}_振り返り.docx",
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             )
-        else:
-            # 💡 エラーメッセージも新しいファイル名に合わせて修正
-            st.error(f"エラー: テンプレートファイル '{template_file_path}' が見つかりません。ファイル名とtemplatesフォルダの場所を確認してください。")
+            if st.session_state.messages:
+                df = pd.DataFrame(st.session_state.messages)
+                csv = df.to_csv(index=False).encode('utf-8')
+                st.sidebar.download_button(
+                    label="対話履歴をCSV形式でダウンロード",
+                    data=csv,
+                    file_name=f"{st.session_state['username']}_対話履歴.csv",
+                    mime="text/csv",
+                )
+    else:
+        st.info("チャットボットを利用するには、サイドバーからログインまたは新規登録をしてください。")
 
-# --- Main App Execution ---
-
-if not st.session_state.chat_started:
-    handle_initial_goal_setting()
-else:
-    handle_ongoing_chat()
+if __name__ == '__main__':
+    main()
