@@ -195,12 +195,12 @@ def handle_ongoing_chat():
                     st.session_state.finalized_goal = True
                     st.rerun() # 状態が変更されたら再実行してダウンロードボタンを表示
     else:
-        # --- ダウンロードボタンのロジック (ファイル名「nikki.docx」を反映) ---
+        # --- ダウンロードボタンのロジック (ファイル名「nikki4.docx」を反映) ---
         st.info("目標の設定お疲れ様でした！次に今後の振り返りで使うテンプレートのダウンロードを行いましょう！")
         
         # テンプレートファイルのパスを新しいファイル名に設定
-        # 💡 ここを「nikki.docx」に変更
-        template_file_path = "templates/nikki.docx"
+        # 💡 ここを「nikki4.docx」に変更
+        template_file_path = "templates/nikki4.docx"
         
         if os.path.exists(template_file_path):
             # バイナリモードでファイルを読み込む (Wordファイルはバイナリです)
@@ -222,8 +222,8 @@ def handle_ongoing_chat():
                 label="📥 テンプレートをダウンロード", # ラベルも変更
                 data=template_data,
                 # ダウンロード時のファイル名も新しい名前に設定
-                # 💡 ここを「nikki.docx」に変更
-                file_name="nikki.docx", 
+                # 💡 ここを「nikki4.docx」に変更
+                file_name="nikki4.docx", 
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             )
         else:
