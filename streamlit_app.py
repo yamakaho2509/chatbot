@@ -135,7 +135,7 @@ def handle_initial_goal_setting():
             
             # ユーザー入力を統合したプロンプトを作成
             user_prompt = (
-                f"私の学習目標です。この情報に基づいて、考えを深めるための質問を1つだけ返してください。\n\n"
+                f"私がこれから学習しようとしていることです。この情報に基づいて学習目標を設定できるよう、考えを深めるための質問をして、対話を通して支援してください。\n\n"
                 f"① テーマ: {learning_theme}\n"
                 f"② 進捗: {goal_date_and_progress}\n"
                 f"③ 達成基準: {achievement_criteria}"
