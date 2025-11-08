@@ -124,39 +124,48 @@ def handle_initial_goal_setting():
     achievement_criteria = st.text_input("③ 「達成できた！」と感じるために、どんな行動や成果物があればよいですか？ (例：練習問題を9割正答、英単語を毎日30語覚える)", key="criteria_input")
 
     if st.button("目標を送信", key="submit_button"):
-        # ユーザー入力を統合したプロンプトを作成
-        user_prompt = (
-            f"私の学習目標です。この情報に基づいて、考えを深めるための質問を1つだけ返してください。\n\n"
-            f"① テーマ: {learning_theme}\n"
-            f"② 進捗: {goal_date_and_progress}\n"
-            f"③ 達成基準: {achievement_criteria}"
-        )
-
-        # ユーザープロンプトを履歴に追加
-        st.session_state.messages.append({"role": "user", "content": user_prompt})
-        with st.chat_message("user"):
-            st.markdown(user_prompt)
-
-        # API呼び出し用に履歴を整形
-        history = [
-            {"role": "user" if msg["role"] == "user" else "model", "parts": [{"text": msg["content"]}]} 
-            for msg in st.session_state.messages
-        ]
         
-        # ヘルパー関数でAPIを呼び出す
-        gemini_response = get_gemini_response_with_retry(history, SYSTEM_PROMPT)
-
-        if gemini_response:
-            # Geminiの応答を表示
-            with st.chat_message("assistant"):
-                st.markdown(gemini_response)
-
-            # Geminiの応答を履歴に追加
-            st.session_state.messages.append({"role": "assistant", "content": gemini_response})
+        # --- 修正箇所：ここから ---
+        # 3つの入力欄がすべて入力されているかチェック
+        if not learning_theme or not goal_date_and_progress or not achievement_criteria:
+            st.warning("すべての項目（①、②、③）に入力してください。")
+        else:
+            # すべて入力されている場合のみ、対話を開始する
+        # --- 修正箇所：ここまで（インデントを1段下げる） ---
             
-            # チャット開始フラグを立てて再実行
-            st.session_state.chat_started = True
-            st.rerun()
+            # ユーザー入力を統合したプロンプトを作成
+            user_prompt = (
+                f"私の学習目標です。この情報に基づいて、考えを深めるための質問を1つだけ返してください。\n\n"
+                f"① テーマ: {learning_theme}\n"
+                f"② 進捗: {goal_date_and_progress}\n"
+                f"③ 達成基準: {achievement_criteria}"
+            )
+
+            # ユーザープロンプトを履歴に追加
+            st.session_state.messages.append({"role": "user", "content": user_prompt})
+            with st.chat_message("user"):
+                st.markdown(user_prompt)
+
+            # API呼び出し用に履歴を整形
+            history = [
+                {"role": "user" if msg["role"] == "user" else "model", "parts": [{"text": msg["content"]}]} 
+                for msg in st.session_state.messages
+            ]
+            
+            # ヘルパー関数でAPIを呼び出す
+            gemini_response = get_gemini_response_with_retry(history, SYSTEM_PROMPT)
+
+            if gemini_response:
+                # Geminiの応答を表示
+                with st.chat_message("assistant"):
+                    st.markdown(gemini_response)
+
+                # Geminiの応答を履歴に追加
+                st.session_state.messages.append({"role": "assistant", "content": gemini_response})
+                
+                # チャット開始フラグを立てて再実行
+                st.session_state.chat_started = True
+                st.rerun()
 
 def handle_ongoing_chat():
     """目標送信後の継続的なチャット対話を処理する"""
@@ -236,4 +245,3 @@ if not st.session_state.chat_started:
     handle_initial_goal_setting()
 else:
     handle_ongoing_chat()
-
