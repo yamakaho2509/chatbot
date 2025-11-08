@@ -63,7 +63,11 @@ def get_gemini_response_with_retry(history: list, system_prompt: str):
         st.error("Google APIキーが設定されていません。環境変数またはsecrets.tomlファイルを確認してください。")
         return None
 
-    API_URL = f"https://generativela-anguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={google_api_key}"
+    # --- ▼▼▼ ここが修正箇所です ▼▼▼ ---
+    # (誤) generativela-anguage...
+    # (正) generativelanguage...
+    API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={google_api_key}"
+    # --- ▲▲▲ 修正箇所ここまで ▲▲▲ ---
     
     payload = {
         "contents": history,
@@ -202,10 +206,9 @@ def handle_ongoing_chat():
                     st.session_state.finalized_goal = True
                     st.rerun() # 状態が変更されたら再実行
     
-    # --- ▼▼▼ ここからが修正箇所 ▼▼▼ ---
     # 最終目標が確定 *した後* のロジック
     else:
-        # 1. 注意書きをここに移動
+        # 1. 注意書きを表示
         st.warning("設定した学習目標はページをリフレッシュすると消えてしまいますので、どこかにコピーアンドペーストして保存しておきましょう！")
         
         # 2. ダウンロードボタンとインストラクションのロジック
@@ -220,7 +223,7 @@ def handle_ongoing_chat():
             st.markdown("---")
             st.header("振り返り用テンプレートのダウンロード")
 
-            # 3. ダウンロードボタンを先に表示 (ボタンとテキストの入れ替え)
+            # 3. ダウンロードボタンを先に表示
             st.download_button(
                 label="📥 テンプレートをダウンロード",
                 data=template_data,
@@ -238,7 +241,6 @@ def handle_ongoing_chat():
 """)
         else:
             st.error(f"エラー: テンプレートファイル '{template_file_path}' が見つかりません。ファイル名とtemplatesフォルダの場所を確認してください。")
-    # --- ▲▲▲ ここまでが修正箇所 ▲▲▲ ---
 
 # --- Main App Execution ---
 
