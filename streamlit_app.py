@@ -63,11 +63,8 @@ def get_gemini_response_with_retry(history: list, system_prompt: str):
         st.error("Google APIキーが設定されていません。環境変数またはsecrets.tomlファイルを確認してください。")
         return None
 
-    # --- ▼▼▼ ここが修正箇所です ▼▼▼ ---
-    # (誤) generativela-anguage...
-    # (正) generativelanguage...
+    # 404エラーを修正したURL
     API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={google_api_key}"
-    # --- ▲▲▲ 修正箇所ここまで ▲▲▲ ---
     
     payload = {
         "contents": history,
@@ -204,7 +201,8 @@ def handle_ongoing_chat():
                 # 最終目標の形式が出力されたかチェックし、チャットを終了
                 if "## あなたの学習目標が固まりましたね！" in gemini_response:
                     st.session_state.finalized_goal = True
-                    st.rerun() # 状態が変更されたら再実行
+                    st.rerun() 
+                    st.stop() # <-- ★★★ この行を追加しました ★★★
     
     # 最終目標が確定 *した後* のロジック
     else:
