@@ -121,6 +121,16 @@ def handle_initial_goal_setting():
     """初期の目標設定フォームを処理する"""
     st.header("あなたの学習目標を設定しましょう")
     
+    # CSSを注入して余白を調整
+    # st.caption の下の余白を詰め、入力欄との距離を縮める
+    st.markdown("""
+    <style>
+        [data-testid="stCaption"] {
+            margin-bottom: -8px; /* 例と入力欄の間の余白を詰める */
+        }
+    </style>
+    """, unsafe_allow_html=True)
+    
     # --- 質問、例、入力欄の順序を変更 ---
     
     # 質問1
@@ -133,6 +143,9 @@ def handle_initial_goal_setting():
         placeholder="（ここに入力してください）" # 任意でプレースホルダーを追加
     )
 
+    # グループ間の余白（仕切り）
+    st.markdown("<div style='margin-top: 24px;'></div>", unsafe_allow_html=True)
+
     # 質問2
     st.markdown("② いつまでに、その状態を目指しますか？")
     st.caption("例：3ヶ月後、次のプロジェクトが始まるまで、12月末の試験日")
@@ -140,8 +153,11 @@ def handle_initial_goal_setting():
         "② いつまでに、その状態を目指しますか？",
         key="goal_when_input",
         label_visibility="hidden",
-        placeholder="（ここに入力してください）"
+        placeholder="（ここに入rocin入力してください）"
     )
+
+    # グループ間の余白（仕切り）
+    st.markdown("<div style='margin-top: 24px;'></div>", unsafe_allow_html=True)
 
     # 質問3
     st.markdown("③ 目標を「達成できた」と判断するための、具体的な行動や基準（合格ライン）を教えてください。")
@@ -152,6 +168,10 @@ def handle_initial_goal_setting():
         label_visibility="hidden",
         placeholder="（ここに入力してください）"
     )
+
+    # ボタンの上の余白
+    st.markdown("<div style='margin-top: 24px;'></div>", unsafe_allow_html=True)
+    
     # --- 変更ここまで ---
 
     if st.button("目標を送信", key="submit_button"):
