@@ -124,7 +124,7 @@ def handle_initial_goal_setting():
     # --- 質問を差し替え ---
     goal_what = st.text_input(
         "① 学習を通じて、最終的に「何ができるように」なりたいですか？",
-        help="例：英語の会議で自分の意見を述べられる、Pythonでデータ分析レポートを作成できる、簿記2級の試験に合格する",
+        help="例：英語の会議で自分の意見を述べられる、Pythonでデータ分析レポートを作成できる",
         key="goal_what_input"
     )
     goal_when = st.text_input(
