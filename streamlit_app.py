@@ -120,25 +120,43 @@ st.write(
 def handle_initial_goal_setting():
     """初期の目標設定フォームを処理する"""
     st.header("あなたの学習目標を設定しましょう")
-    learning_theme = st.text_input("① どんなテーマの学習に取り組んでいますか？ (例：簿記、英語、資格試験、業務スキルなど)", key="theme_input")
-    goal_date_and_progress = st.text_input("② いつまでにどのくらいの進捗を目指していますか？ (例：1か月後にテキスト1冊終える、来月の試験に合格する など)", key="date_input")
-    achievement_criteria = st.text_input("③ 「達成できた！」と感じるために、どんな行動や成果物があればよいですか？ (例：練習問題を9割正答、英単語を毎日30語覚える)", key="criteria_input")
+    
+    # --- 質問を差し替え ---
+    goal_what = st.text_input(
+        "① 学習を通じて、最終的に「何ができるように」なりたいですか？",
+        help="例：英語の会議で自分の意見を述べられる、Pythonでデータ分析レポートを作成できる、簿記2級の試験に合格する",
+        key="goal_what_input"
+    )
+    goal_when = st.text_input(
+        "② いつまでに、その状態を目指しますか？",
+        help="例：3ヶ月後、次のプロジェクトが始まるまで、12月末の試験日",
+        key="goal_when_input"
+    )
+    goal_criteria = st.text_input(
+        "③ 目標を「達成できた」と判断するための、具体的な行動や基準（合格ライン）を教えてください。",
+        help="例：模擬試験で90点以上取る、毎日30分コードを書き、週に1つアプリの機能を追加する、上司のレビューでOKをもらう",
+        key="goal_criteria_input"
+    )
+    # --- 差し替えここまで ---
 
     if st.button("目標を送信", key="submit_button"):
         
         # 3つの入力欄がすべて入力されているかチェック
-        if not learning_theme or not goal_date_and_progress or not achievement_criteria:
+        # --- 変数名も合わせて修正 ---
+        if not goal_what or not goal_when or not goal_criteria:
             st.warning("すべての項目（①、②、③）に入力してください。")
         else:
             # すべて入力されている場合のみ、対話を開始する
             
             # ユーザー入力を統合したプロンプトを作成
+            # --- プロンプトの内容も質問に合わせて修正 ---
             user_prompt = (
                 f"私がこれから学習しようとしていることです。この情報に基づいて学習目標を設定できるよう、考えを深めるための質問をして、対話を通して支援してください。\n\n"
-                f"① テーマ: {learning_theme}\n"
-                f"② 進捗: {goal_date_and_progress}\n"
-                f"③ 達成基準: {achievement_criteria}"
+                f"① 何ができるようになりたいか: {goal_what}\n"
+                f"② いつまでに: {goal_when}\n"
+                f"③ 達成基準: {goal_criteria}"
             )
+            # --- 修正ここまで ---
 
             # ユーザープロンプトを履歴に追加
             st.session_state.messages.append({"role": "user", "content": user_prompt})
