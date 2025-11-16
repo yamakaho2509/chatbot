@@ -121,24 +121,37 @@ def handle_initial_goal_setting():
     """初期の目標設定フォームを処理する"""
     st.header("あなたの学習目標を設定しましょう")
     
-    # --- 質問を差し替え＆例の表示方法を変更 ---
-    goal_what = st.text_input(
-        "① 学習を通じて、最終的に「何ができるように」なりたいですか？",
-        key="goal_what_input"
-    )
+    # --- 質問、例、入力欄の順序を変更 ---
+    
+    # 質問1
+    st.markdown("① 学習を通じて、最終的に「何ができるように」なりたいですか？")
     st.caption("例：英語の会議で自分の意見を述べられる、Pythonでデータ分析レポートを作成できる、簿記2級の試験に合格する")
+    goal_what = st.text_input(
+        "① 学習を通じて、最終的に「何ができるように」なりたいですか？", # st.text_inputにはlabelが必須のため内部的に設定
+        key="goal_what_input",
+        label_visibility="hidden", # ラベルを非表示にする
+        placeholder="（ここに入力してください）" # 任意でプレースホルダーを追加
+    )
 
+    # 質問2
+    st.markdown("② いつまでに、その状態を目指しますか？")
+    st.caption("例：3ヶ月後、次のプロジェクトが始まるまで、12月末の試験日")
     goal_when = st.text_input(
         "② いつまでに、その状態を目指しますか？",
-        key="goal_when_input"
+        key="goal_when_input",
+        label_visibility="hidden",
+        placeholder="（ここに入力してください）"
     )
-    st.caption("例：3ヶ月後、次のプロジェクトが始まるまで、12月末の試験日")
 
+    # 質問3
+    st.markdown("③ 目標を「達成できた」と判断するための、具体的な行動や基準（合格ライン）を教えてください。")
+    st.caption("例：模擬試験で90点以上取る、毎日30分コードを書き、週に1つアプリの機能を追加する、上司のレビューでOKをもらう")
     goal_criteria = st.text_input(
         "③ 目標を「達成できた」と判断するための、具体的な行動や基準（合格ライン）を教えてください。",
-        key="goal_criteria_input"
+        key="goal_criteria_input",
+        label_visibility="hidden",
+        placeholder="（ここに入力してください）"
     )
-    st.caption("例：模擬試験で90点以上取る、毎日30分コードを書き、週に1つアプリの機能を追加する、上司のレビューでOKをもらう")
     # --- 変更ここまで ---
 
     if st.button("目標を送信", key="submit_button"):
