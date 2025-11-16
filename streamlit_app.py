@@ -122,12 +122,30 @@ def handle_initial_goal_setting():
     st.header("あなたの学習目標を設定しましょう")
     
     # CSSを注入して余白を調整
-    # st.caption の上（質問文との間）と下（入力欄との間）の余白を詰める
+    # st.markdown(質問文)とst.caption(例)の間、st.caption(例)とst.text_input(入力欄)の間を詰める
+    # Streamlitのバージョンによるセレクタの違いを考慮し、複数の可能性を試す
     st.markdown("""
     <style>
-        [data-testid="stCaption"] {
-            margin-top: -8px;    /* 質問文と例の間の余白を詰める */
-            margin-bottom: -8px; /* 例と入力欄の間の余白を詰める */
+        /* st.markdown(質問文) の下の余白を詰める (最新のStreamlitはstMarkdownContainer) */
+        div[data-testid="stMarkdownContainer"] p {
+            margin-bottom: 2px; /* 質問文と例の間の余白 */
+        }
+        /* 古いStreamlit (stMarkdown) */
+        div[data-testid="stMarkdown"] p {
+            margin-bottom: 2px; /* 質問文と例の間の余白 */
+        }
+
+        /* st.caption(例) の上下の余白を詰める (最新のStreamlitはstCaptionContainer) */
+        div[data-testid="stCaptionContainer"] {
+            margin-top: -8px;    /* 質問文と例の間の余白 */
+            margin-bottom: -8px; /* 例と入力欄の間の余白 */
+            padding-top: 0;
+        }
+        /* 古いStreamlit (stCaption) */
+        div[data-testid="stCaption"] {
+            margin-top: -8px;    /* 質問文と例の間の余白 */
+            margin-bottom: -8px; /* 例と入力欄の間の余白 */
+            padding-top: 0;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -154,7 +172,7 @@ def handle_initial_goal_setting():
         "② いつまでに、その状態を目指しますか？",
         key="goal_when_input",
         label_visibility="hidden",
-        placeholder="（ここに入rocin入力してください）"
+        placeholder="（ここに入力してください）"
     )
 
     # グループ間の余白（仕切り）
@@ -178,21 +196,18 @@ def handle_initial_goal_setting():
     if st.button("目標を送信", key="submit_button"):
         
         # 3つの入力欄がすべて入力されているかチェック
-        # --- 変数名も合わせて修正 ---
         if not goal_what or not goal_when or not goal_criteria:
             st.warning("すべての項目（①、②、③）に入力してください。")
         else:
             # すべて入力されている場合のみ、対話を開始する
             
             # ユーザー入力を統合したプロンプトを作成
-            # --- プロンプトの内容も質問に合わせて修正 ---
             user_prompt = (
                 f"私がこれから学習しようとしていることです。この情報に基づいて学習目標を設定できるよう、考えを深めるための質問をして、対話を通して支援してください。\n\n"
                 f"① 何ができるようになりたいか: {goal_what}\n"
-                f"② いつまでに: {goal_when}\n"
+                f"② いつまで: {goal_when}\n"
                 f"③ 達成基準: {goal_criteria}"
             )
-            # --- 修正ここまで ---
 
             # ユーザープロンプトを履歴に追加
             st.session_state.messages.append({"role": "user", "content": user_prompt})
@@ -256,7 +271,7 @@ def handle_ongoing_chat():
                 if "## あなたの学習目標が固まりましたね！" in gemini_response:
                     st.session_state.finalized_goal = True
                     st.rerun() 
-                    st.stop() # <-- ★★★ この行を追加しました ★★★
+                    st.stop()
     
     # 最終目標が確定 *した後* のロジック
     else:
