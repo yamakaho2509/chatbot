@@ -122,10 +122,11 @@ def handle_initial_goal_setting():
     st.header("あなたの学習目標を設定しましょう")
     
     # CSSを注入して余白を調整
-    # st.caption の下の余白を詰め、入力欄との距離を縮める
+    # st.caption の上（質問文との間）と下（入力欄との間）の余白を詰める
     st.markdown("""
     <style>
         [data-testid="stCaption"] {
+            margin-top: -8px;    /* 質問文と例の間の余白を詰める */
             margin-bottom: -8px; /* 例と入力欄の間の余白を詰める */
         }
     </style>
