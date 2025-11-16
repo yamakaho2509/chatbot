@@ -121,93 +121,42 @@ def handle_initial_goal_setting():
     """初期の目標設定フォームを処理する"""
     st.header("あなたの学習目標を設定しましょう")
     
-    # CSSを注入して余白を調整
-    # st.markdown(質問文)とst.caption(例)の間、st.caption(例)とst.text_input(入力欄)の間を詰める
-    # Streamlitのバージョンによるセレクタの違いを考慮し、複数の可能性を試す
-    st.markdown("""
-    <style>
-        /* st.markdown(質問文) の下の余白を詰める (最新のStreamlitはstMarkdownContainer) */
-        div[data-testid="stMarkdownContainer"] p {
-            margin-bottom: 2px; /* 質問文と例の間の余白 */
-        }
-        /* 古いStreamlit (stMarkdown) */
-        div[data-testid="stMarkdown"] p {
-            margin-bottom: 2px; /* 質問文と例の間の余白 */
-        }
-
-        /* st.caption(例) の上下の余白を詰める (最新のStreamlitはstCaptionContainer) */
-        div[data-testid="stCaptionContainer"] {
-            margin-top: -8px;    /* 質問文と例の間の余白 */
-            margin-bottom: -8px; /* 例と入力欄の間の余白 */
-            padding-top: 0;
-        }
-        /* 古いStreamlit (stCaption) */
-        div[data-testid="stCaption"] {
-            margin-top: -8px;    /* 質問文と例の間の余白 */
-            margin-bottom: -8px; /* 例と入力欄の間の余白 */
-            padding-top: 0;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    # --- 質問、例、入力欄の順序を変更 ---
-    
-    # 質問1
-    st.markdown("① 学習を通じて、最終的に「何ができるように」なりたいですか？")
-    st.caption("例：英語の会議で自分の意見を述べられる、Pythonでデータ分析レポートを作成できる、簿記2級の試験に合格する")
+    # --- 質問を差し替え ---
     goal_what = st.text_input(
-        "① 学習を通じて、最終的に「何ができるように」なりたいですか？", # st.text_inputにはlabelが必須のため内部的に設定
-        key="goal_what_input",
-        label_visibility="hidden", # ラベルを非表示にする
-        placeholder="（ここに入力してください）" # 任意でプレースホルダーを追加
+        "① 学習を通じて、最終的に「何ができるように」なりたいですか？",
+        help="例：英語の会議で自分の意見を述べられる、Pythonでデータ分析レポートを作成できる、簿記2級の試験に合格する",
+        key="goal_what_input"
     )
-
-    # グループ間の余白（仕切り）
-    st.markdown("<div style='margin-top: 24px;'></div>", unsafe_allow_html=True)
-
-    # 質問2
-    st.markdown("② いつまでに、その状態を目指しますか？")
-    st.caption("例：3ヶ月後、次のプロジェクトが始まるまで、12月末の試験日")
     goal_when = st.text_input(
         "② いつまでに、その状態を目指しますか？",
-        key="goal_when_input",
-        label_visibility="hidden",
-        placeholder="（ここに入力してください）"
+        help="例：3ヶ月後、次のプロジェクトが始まるまで、12月末の試験日",
+        key="goal_when_input"
     )
-
-    # グループ間の余白（仕切り）
-    st.markdown("<div style='margin-top: 24px;'></div>", unsafe_allow_html=True)
-
-    # 質問3
-    st.markdown("③ 目標を「達成できた」と判断するための、具体的な行動や基準（合格ライン）を教えてください。")
-    st.caption("例：模擬試験で90点以上取る、毎日30分コードを書き、週に1つアプリの機能を追加する、上司のレビューでOKをもらう")
     goal_criteria = st.text_input(
         "③ 目標を「達成できた」と判断するための、具体的な行動や基準（合格ライン）を教えてください。",
-        key="goal_criteria_input",
-        label_visibility="hidden",
-        placeholder="（ここに入力してください）"
+        help="例：模擬試験で90点以上取る、毎日30分コードを書き、週に1つアプリの機能を追加する、上司のレビューでOKをもらう",
+        key="goal_criteria_input"
     )
-
-    # ボタンの上の余白
-    st.markdown("<div style='margin-top: 24px;'></div>", unsafe_allow_html=True)
-    
-    # --- 変更ここまで ---
+    # --- 差し替えここまで ---
 
     if st.button("目標を送信", key="submit_button"):
         
         # 3つの入力欄がすべて入力されているかチェック
+        # --- 変数名も合わせて修正 ---
         if not goal_what or not goal_when or not goal_criteria:
             st.warning("すべての項目（①、②、③）に入力してください。")
         else:
             # すべて入力されている場合のみ、対話を開始する
             
             # ユーザー入力を統合したプロンプトを作成
+            # --- プロンプトの内容も質問に合わせて修正 ---
             user_prompt = (
                 f"私がこれから学習しようとしていることです。この情報に基づいて学習目標を設定できるよう、考えを深めるための質問をして、対話を通して支援してください。\n\n"
                 f"① 何ができるようになりたいか: {goal_what}\n"
-                f"② いつまで: {goal_when}\n"
+                f"② いつまでに: {goal_when}\n"
                 f"③ 達成基準: {goal_criteria}"
             )
+            # --- 修正ここまで ---
 
             # ユーザープロンプトを履歴に追加
             st.session_state.messages.append({"role": "user", "content": user_prompt})
@@ -271,7 +220,7 @@ def handle_ongoing_chat():
                 if "## あなたの学習目標が固まりましたね！" in gemini_response:
                     st.session_state.finalized_goal = True
                     st.rerun() 
-                    st.stop()
+                    st.stop() # <-- ★★★ この行を追加しました ★★★
     
     # 最終目標が確定 *した後* のロジック
     else:
