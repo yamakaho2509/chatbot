@@ -117,46 +117,62 @@ st.write(
     "このチャットボットは、あなたの学習目標達成をサポートします。具体的な目標を明文化しましょう！"
 )
 
+# --- ★★★ ここからが修正箇所です ★★★ ---
 def handle_initial_goal_setting():
     """初期の目標設定フォームを処理する"""
     st.header("あなたの学習目標を設定しましょう")
     
-    # --- 質問を差し替え ---
+    # --- 質問とヘルプテキストの表示方法を変更 ---
+
+    # 質問①
+    st.markdown(
+        "**① 学習を通じて、最終的に「何ができるように」なりたいですか？**"
+    )
+    st.caption("例：英語の会議で自分の意見を述べられる、Pythonでデータ分析レポートを作成できる")
     goal_what = st.text_input(
-        "① 学習を通じて、最終的に「何ができるように」なりたいですか？",
-        help="例：英語の会議で自分の意見を述べられる、Pythonでデータ分析レポートを作成できる",
+        label="goal_what_hidden",  # ラベルは非表示にするが、内部的に必要
+        label_visibility="collapsed",
         key="goal_what_input"
     )
+
+    # 質問②
+    st.markdown(
+        "**② いつまでに、その状態を目指しますか？**"
+    )
+    st.caption("例：3ヶ月後、次のプロジェクトが始まるまで、12月末の試験日")
     goal_when = st.text_input(
-        "② いつまでに、その状態を目指しますか？",
-        help="例：3ヶ月後、次のプロジェクトが始まるまで、12月末の試験日",
+        label="goal_when_hidden",
+        label_visibility="collapsed",
         key="goal_when_input"
     )
+
+    # 質問③
+    st.markdown(
+        "**③ 目標を「達成できた」と判断するための、具体的な行動や基準（合格ライン）を教えてください。**"
+    )
+    st.caption("例：模擬試験で90点以上取る、毎日30分コードを書き、週に1つアプリの機能を追加する、上司のレビューでOKをもらう")
     goal_criteria = st.text_input(
-        "③ 目標を「達成できた」と判断するための、具体的な行動や基準（合格ライン）を教えてください。",
-        help="例：模擬試験で90点以上取る、毎日30分コードを書き、週に1つアプリの機能を追加する、上司のレビューでOKをもらう",
+        label="goal_criteria_hidden",
+        label_visibility="collapsed",
         key="goal_criteria_input"
     )
-    # --- 差し替えここまで ---
+    # --- 変更ここまで ---
 
     if st.button("目標を送信", key="submit_button"):
         
         # 3つの入力欄がすべて入力されているかチェック
-        # --- 変数名も合わせて修正 ---
         if not goal_what or not goal_when or not goal_criteria:
             st.warning("すべての項目（①、②、③）に入力してください。")
         else:
             # すべて入力されている場合のみ、対話を開始する
             
             # ユーザー入力を統合したプロンプトを作成
-            # --- プロンプトの内容も質問に合わせて修正 ---
             user_prompt = (
                 f"私がこれから学習しようとしていることです。この情報に基づいて学習目標を設定できるよう、考えを深めるための質問をして、対話を通して支援してください。\n\n"
                 f"① 何ができるようになりたいか: {goal_what}\n"
                 f"② いつまでに: {goal_when}\n"
                 f"③ 達成基準: {goal_criteria}"
             )
-            # --- 修正ここまで ---
 
             # ユーザープロンプトを履歴に追加
             st.session_state.messages.append({"role": "user", "content": user_prompt})
@@ -183,6 +199,7 @@ def handle_initial_goal_setting():
                 # チャット開始フラグを立てて再実行
                 st.session_state.chat_started = True
                 st.rerun()
+# --- ★★★ ここまでが修正箇所です ★★★ ---
 
 def handle_ongoing_chat():
     """目標送信後の継続的なチャット対話を処理する"""
