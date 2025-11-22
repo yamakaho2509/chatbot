@@ -110,7 +110,7 @@ def get_gemini_response_with_retry(history: list, system_prompt: str):
         return None
 
     # 404エラーを修正したURL
-    API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={google_api_key}"
+    API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={google_api_key}"
     
     payload = {
         "contents": history,
